@@ -27,23 +27,18 @@ GENRES_ML_10M = GENRES_ML_100K + ['IMAX']
 
 class MovieLens(object):
     """MovieLens dataset used by GCMC model
-
     TODO(minjie): make this dataset more general
-
     The dataset stores MovieLens ratings in two types of graphs. The encoder graph
     contains rating value information in the form of edge types. The decoder graph
     stores plain user-movie pairs in the form of a bipartite graph with no rating
     information. All graphs have two types of nodes: "user" and "movie".
-
     The training, validation and test set can be summarized as follows:
-
     training_enc_graph : training user-movie pairs + rating info
     training_dec_graph : training user-movie pairs
     valid_enc_graph : training user-movie pairs + rating info
     valid_dec_graph : validation user-movie pairs
     test_enc_graph : training user-movie pairs + validation user-movie pairs + rating info
     test_dec_graph : test user-movie pairs
-
     Attributes
     ----------
     train_enc_graph : dgl.DGLHeteroGraph
@@ -76,7 +71,6 @@ class MovieLens(object):
         Movie feature tensor. If None, representing an identity matrix.
     possible_rating_values : np.ndarray
         Available rating values in the dataset
-
     Parameters
     ----------
     name : str
@@ -95,7 +89,6 @@ class MovieLens(object):
         Ratio of test data
     valid_ratio : float, optional
         Ratio of validation data
-
     """
     def __init__(self, name, device, mix_cpu_gpu=False,
                  use_one_hot_fea=False, symm=True,
@@ -106,7 +99,7 @@ class MovieLens(object):
         self._test_ratio = test_ratio
         self._valid_ratio = valid_ratio
         # download and extract
-        download_dir = 'data'#get_download_dir()
+        download_dir = get_download_dir()
         zip_file_path = '{}/{}.zip'.format(download_dir, name)
         download(_urls[name], path=zip_file_path)
         extract_archive(zip_file_path, '{}/{}'.format(download_dir, name))
@@ -336,19 +329,14 @@ class MovieLens(object):
 
     def _load_raw_rates(self, file_path, sep):
         """In MovieLens, the rates have the following format
-
         ml-100k
         user id \t movie id \t rating \t timestamp
-
         ml-1m/10m
         UserID::MovieID::Rating::Timestamp
-
         timestamp is unix timestamp and can be converted by pd.to_datetime(X, unit='s')
-
         Parameters
         ----------
         file_path : str
-
         Returns
         -------
         rating_info : pd.DataFrame
@@ -362,19 +350,14 @@ class MovieLens(object):
 
     def _load_raw_user_info(self):
         """In MovieLens, the user attributes file have the following formats:
-
         ml-100k:
         user id | age | gender | occupation | zip code
-
         ml-1m:
         UserID::Gender::Age::Occupation::Zip-code
-
         For ml-10m, there is no user information. We read the user id from the rating file.
-
         Parameters
         ----------
         name : str
-
         Returns
         -------
         user_info : pd.DataFrame
@@ -398,7 +381,6 @@ class MovieLens(object):
 
     def _process_user_fea(self):
         """
-
         Parameters
         ----------
         user_info : pd.DataFrame
@@ -406,11 +388,9 @@ class MovieLens(object):
         For ml-100k and ml-1m, the column name is ['id', 'gender', 'age', 'occupation', 'zip_code'].
             We take the age, gender, and the one-hot encoding of the occupation as the user features.
         For ml-10m, there is no user feature and we set the feature to be a single zero.
-
         Returns
         -------
         user_features : np.ndarray
-
         """
         if self._name == 'ml-100k' or self._name == 'ml-1m':
             ages = self.user_info['age'].values.astype(np.float32)
@@ -432,21 +412,14 @@ class MovieLens(object):
 
     def _load_raw_movie_info(self):
         """In MovieLens, the movie attributes may have the following formats:
-
         In ml_100k:
-
         movie id | movie title | release date | video release date | IMDb URL | [genres]
-
         In ml_1m, ml_10m:
-
         MovieID::Title (Release Year)::Genres
-
         Also, Genres are separated by |, e.g., Adventure|Animation|Children|Comedy|Fantasy
-
         Parameters
         ----------
         name : str
-
         Returns
         -------
         movie_info : pd.DataFrame
@@ -491,17 +464,14 @@ class MovieLens(object):
 
     def _process_movie_fea(self):
         """
-
         Parameters
         ----------
         movie_info : pd.DataFrame
         name :  str
-
         Returns
         -------
         movie_features : np.ndarray
             Generate movie features by concatenating embedding and the year
-
         """
         import torchtext
 

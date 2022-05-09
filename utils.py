@@ -77,6 +77,8 @@ def get_optimizer(opt):
     else:
         raise NotImplementedError
 
+#def get_nondp_opt(opt):
+
 
 def to_etype_name(rating):
     return str(rating).replace('.', '_')

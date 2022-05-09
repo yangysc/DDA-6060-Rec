@@ -10,9 +10,19 @@ import string
 import numpy as np
 import torch as th
 import torch.nn as nn
+from opacus import PrivacyEngine
 from data import MovieLens
 from model import BiDecoder, GCMCLayer
 from utils import get_activation, get_optimizer, torch_total_param_num, torch_net_info, MetricLogger
+
+
+from opacus.accountants import RDPAccountant
+#from .dputil import get_noise_multiplier
+from opacus.accountants.utils import get_noise_multiplier
+
+from opacus.grad_sample import GradSampleModule
+from opacus.optimizers import DPOptimizer
+from opacus.validators import ModuleValidator
 
 class Net(nn.Module):
     def __init__(self, args):
@@ -79,10 +89,42 @@ def train(args):
     ### build the net
     net = Net(args=args)
     net = net.to(args.device)
+    #print(net)
     nd_possible_rating_values = th.FloatTensor(dataset.possible_rating_values).to(args.device)
     rating_loss_net = nn.CrossEntropyLoss()
     learning_rate = args.train_lr
+     
     optimizer = get_optimizer(args.train_optimizer)(net.parameters(), lr=learning_rate)
+    dp_opt = get_optimizer(args.train_optimizer)(net.decoder.combine_basis.parameters(), lr=learning_rate)
+
+    if not args.disable_dp:
+        # initialize privacy accountant
+        accountant = RDPAccountant()
+
+        noise_multiplier=get_noise_multiplier(
+            target_epsilon=args.epsilon,
+            target_delta=args.delta,
+            sample_rate=1,
+            epochs=2000,
+            accountant=accountant.mechanism()
+        )
+            
+        noise_multiplier = float(noise_multiplier) 
+        print('Epsilon', args.epsilon, 'Noise Multiplier', noise_multiplier)
+        net.decoder.combine_basis = GradSampleModule(net.decoder.combine_basis)
+
+        dp_opt = DPOptimizer(
+            optimizer=dp_opt,
+            noise_multiplier=noise_multiplier, # same as make_private arguments
+            max_grad_norm=args.train_grad_clip, # same as make_private arguments
+            expected_batch_size=20000 # if you're averaging your gradients, you need to know the denominator
+        )
+
+        dp_opt.attach_step_hook(
+            accountant.get_optimizer_hook_fn(
+            sample_rate=1
+            )
+        )
     print("Loading network finished ...\n")
 
     ### perpare training data
@@ -123,9 +165,17 @@ def train(args):
         loss = rating_loss_net(pred_ratings, train_gt_labels).mean()
         count_loss += loss.item()
         optimizer.zero_grad()
+        dp_opt.zero_grad()
         loss.backward()
         nn.utils.clip_grad_norm_(net.parameters(), args.train_grad_clip)
+        
+        for p in net.decoder.combine_basis.parameters():
+            p.requires_grad = False
         optimizer.step()
+
+        for p in net.decoder.combine_basis.parameters():
+            p.requires_grad = True
+        dp_opt.step()
 
         if iter_idx > 3:
             dur.append(time.time() - t0)
@@ -148,6 +198,13 @@ def train(args):
                 np.average(dur))
             count_rmse = 0
             count_num = 0
+            if not args.disable_dp:
+                epsilon, best_alpha = accountant.get_privacy_spent(
+                    delta=args.delta
+                )
+                print(
+                    f"(ε = {epsilon:.2f}, δ = {args.delta}) for α = {best_alpha}"
+                )
 
         if iter_idx % args.train_valid_interval == 0:
             valid_rmse = evaluate(args=args, net=net, dataset=dataset, segment='valid')
@@ -216,6 +273,33 @@ def config():
     parser.add_argument('--train_decay_patience', type=int, default=50)
     parser.add_argument('--train_early_stopping_patience', type=int, default=100)
     parser.add_argument('--share_param', default=False, action='store_true')
+    parser.add_argument('--max-per-sample-grad_norm',type=float,default=10.0,help="Clip per-sample gradients to this norm", )
+    parser.add_argument(
+        "--delta",
+        type=float,
+        default=1e-5,
+        metavar="D",
+        help="Target delta (default: 1e-5)",
+    )
+    parser.add_argument(
+        "--epsilon",
+        type=float,
+        default=5,
+        metavar="D",
+        help="Target delta (default: 1e-5)",
+    )
+    parser.add_argument(
+        "--disable-dp",
+        action="store_true",
+        default=False,
+        help="Disable privacy training and just train with vanilla optimizer",
+    )
+    parser.add_argument(
+        "--secure-rng",
+        action="store_true",
+        default=False,
+        help="Enable Secure RNG to have trustworthy privacy guarantees. Comes at a performance cost",
+    )
 
     args = parser.parse_args()
     args.device = th.device(args.device) if args.device >= 0 else th.device('cpu')

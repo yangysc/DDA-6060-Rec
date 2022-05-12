@@ -101,8 +101,15 @@ class MovieLens(object):
         # download and extract
         download_dir = get_download_dir()
         zip_file_path = '{}/{}.zip'.format(download_dir, name)
-        download(_urls[name], path=zip_file_path)
-        extract_archive(zip_file_path, '{}/{}'.format(download_dir, name))
+
+        # check if file folder already exist, avoding downloading repeatly
+        if not os.path.exists(zip_file_path):
+            download(_urls[name], path=zip_file_path)
+            try:
+                extract_archive(zip_file_path, '{}/{}'.format(download_dir, name))
+            except:
+                download(_urls[name], path=zip_file_path)
+                extract_archive(zip_file_path, '{}/{}'.format(download_dir, name))
         if name == 'ml-10m':
             root_folder = 'ml-10M100K'
         else:

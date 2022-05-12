@@ -9,12 +9,13 @@ import logging
 import random
 import string
 import numpy as np
+import torch
 import torch as th
 import torch.nn as nn
 from opacus import PrivacyEngine
 from data import MovieLens
 from model import BiDecoder, GCMCLayer
-from utils import get_activation, get_optimizer, torch_total_param_num, torch_net_info, MetricLogger
+from utils import get_activation, get_optimizer, torch_total_param_num, torch_net_info, MetricLogger, GraphNorm
 from discriminators import Discriminator
 
 from opacus.accountants import RDPAccountant
@@ -44,12 +45,19 @@ class Net(nn.Module):
                                  num_classes=len(args.rating_vals),
                                  num_basis=args.gen_r_num_basis_func)
 
+        self.gn = GraphNorm('gn',  args.gcn_out_units)
+
     def forward(self, enc_graph, dec_graph, ufeat, ifeat):
         user_out, movie_out = self.encoder(
             enc_graph,
             ufeat,
             ifeat)
-        pred_ratings = self.decoder(dec_graph, user_out, movie_out)
+        # graphnorm on both user and movie embeddings (viewed as one graph)
+        padded_graph_out = torch.cat([user_out, movie_out])
+        normalized_graph_out = self.gn(dec_graph, padded_graph_out)
+        normalized_user_out, normalized_movie_out = normalized_graph_out[:user_out.shape[0]], normalized_graph_out[user_out.shape[0]:]
+        # end of adding graphnorm
+        pred_ratings = self.decoder(dec_graph, normalized_user_out, normalized_movie_out)
         return pred_ratings
 
     def encode(self, enc_graph, ufeat, ifeat):

@@ -13,8 +13,8 @@ https://grouplens.org/datasets/movielens/100k/
 # Experimental Results
 | Dataset    | Method  | RMSE on validation | RMSE on Test |
 |  ----  | ----  |----  |----  |
-|   | GNN | |
-|   | GNN-Fair | |
-|   | GNN-DP | |
-|   | GNN-Fair-DP | 0.9569 | 0.9864 |
-|   | GNN-Fair-DP-GN | 0.9333 | 0.9543 |
+|  ml-100k   | GNN | |
+|   ml-100k  | GNN-Fair | |
+|   ml-100k  | GNN-DP | |
+|   ml-100k  | GNN-Fair-DP | 0.9569 | 0.9864 |
+|  ml-100k | GNN-Fair-DP-GN | 0.9333 | 0.9543 |

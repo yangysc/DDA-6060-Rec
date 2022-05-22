@@ -395,7 +395,7 @@ def config():
     parser.add_argument(
         "--epsilon",
         type=float,
-        default=0.8,
+        default=1,
         metavar="D",
         help="Target epsilon",
     )
@@ -414,7 +414,7 @@ def config():
     parser.add_argument(
         "--disable-fair",
         action="store_true",
-        default=True,
+        default=False,
         help="Disable fair training and train without discriminator",
     )
     parser.add_argument(
@@ -426,7 +426,7 @@ def config():
     parser.add_argument(
         "--lam",
         type=float,
-        default=100,
+        default=1,
         help="A factor for the tradeoff between fairness and performance (loss=rs_loss-lam*dis_loss). (default: 10)",
     )
     parser.add_argument(

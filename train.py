@@ -352,7 +352,7 @@ def train(args):
 
 def config():
     parser = argparse.ArgumentParser(description='GCMC')
-    parser.add_argument('--seed', default=123, type=int)
+    parser.add_argument('--seed', default=2, type=int)
     parser.add_argument('--device', default='0', type=int,
                         help='Running device. E.g `--device 0`, if using cpu, set `--device -1`')
     parser.add_argument('--save_dir', type=str, help='The saving directory')
@@ -395,9 +395,9 @@ def config():
     parser.add_argument(
         "--epsilon",
         type=float,
-        default=5,
+        default=0.8,
         metavar="D",
-        help="Target delta (default: 1e-5)",
+        help="Target epsilon",
     )
     parser.add_argument(
         "--disable-dp",
@@ -414,7 +414,7 @@ def config():
     parser.add_argument(
         "--disable-fair",
         action="store_true",
-        default=False,
+        default=True,
         help="Disable fair training and train without discriminator",
     )
     parser.add_argument(
